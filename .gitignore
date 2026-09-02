@@ -1,0 +1,20 @@
+# Python / Environments
+venv/
+__pycache__/
+*.pyc
+.env
+
+# Database Files
+*.db
+attendance.db
+
+# Media & Captured Data
+captured_faces/
+*.jpg
+*.jpeg
+*.png
+
+# OS & Editor Files
+.DS_Store
+.vscode/
+.idea/
