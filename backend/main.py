@@ -4,6 +4,9 @@ import cv2
 from typing import List
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from insightface.app import FaceAnalysis
+import sys, os
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from quality_check import check_image_quality
 
 # Initialize FastAPI application
 app = FastAPI(title="Smart Attendance API")
@@ -46,7 +49,10 @@ async def register(
         faces = face_app.get(img)
         
         if len(faces) == 1:
-            embeddings.append(faces[0].normed_embedding)
+            box = faces[0].bbox.astype(int)
+            quality_ok, _ = check_image_quality(img, box)
+            if quality_ok:
+                embeddings.append(faces[0].normed_embedding)
             
     if not embeddings:
         raise HTTPException(

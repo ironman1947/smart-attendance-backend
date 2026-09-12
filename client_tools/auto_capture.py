@@ -2,6 +2,9 @@ import cv2
 import os
 import time
 from insightface.app import FaceAnalysis
+import sys
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+from quality_check import check_image_quality
 
 def capture_registration_burst(num_images=20, save_dir="captured_faces"):
     """Automatically captures a burst of images for student registration."""
@@ -50,19 +53,31 @@ def capture_registration_burst(num_images=20, save_dir="captured_faces"):
         
         # Only capture if exactly one face is clearly visible
         if len(faces) == 1:
-            # Extract coordinates for the bounding box
+        # Extract coordinates for the bounding box
             box = faces[0].bbox.astype(int)
             x1, y1, x2, y2 = box
             cv2.rectangle(display_frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            
-            file_number = start_index + current_count
-            img_name = os.path.join(student_path, f"frame_{file_number:04d}.jpg")
-            cv2.imwrite(img_name, frame)
-            
-            current_count += 1
-            print(f"Captured {current_count}/{num_images}")
-            
-            time.sleep(capture_delay) 
+
+        # NEW: quality gate before this frame counts as a good capture
+            quality_ok, issues = check_image_quality(frame, box)
+
+            if quality_ok:
+                file_number = start_index + current_count
+                img_name = os.path.join(student_path, f"frame_{file_number:04d}.jpg")
+                cv2.imwrite(img_name, frame)
+
+                current_count += 1
+                print(f"Captured {current_count}/{num_images}")
+
+                time.sleep(capture_delay)
+            else:
+            # Bad frame -> reject it and tell the student what to fix.
+            # The while loop keeps running, so this is effectively
+            # "try that capture again" in real time.
+                message = issues[0]
+                cv2.putText(display_frame, message, (20, 40),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+                print(f"Rejected frame: {message}") 
         else:
             cv2.putText(display_frame, "Ensure exactly ONE face is visible", (20, 40), 
                         cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
